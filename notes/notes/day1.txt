@@ -1,0 +1,21 @@
+Day 1 - Internship Progress
+
+1. Installed Docker Desktop
+2. Created docker-compose.yml
+3. Started PostgreSQL container
+4. Connected to PostgreSQL
+5. Created customers table
+6. Inserted customer records
+7. Created orders table
+8. Inserted order records
+9. Learned JOIN queries
+10. Created inventory table
+11. Inserted inventory records
+
+Key Concepts Learned:
+- Docker
+- PostgreSQL
+- SQL
+- SELECT
+- INSERT
+- JOIN
