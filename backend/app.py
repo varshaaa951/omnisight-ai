@@ -1,5 +1,7 @@
 from fastapi import FastAPI
+import ollama
 import psycopg2
+from sentence_transformers import SentenceTransformer
 
 app = FastAPI()
 
@@ -9,95 +11,226 @@ conn = psycopg2.connect(
     user="admin",
     password="admin123"
 )
-
-@app.get("/")
-def home():
-    return {"message": "OmniSight AI Backend Running"}
-
-@app.get("/customers/count")
-def customers_count():
+model = SentenceTransformer("all-MiniLM-L6-v2")
+@app.get("/business-summary")
+def business_summary():
 
     cur = conn.cursor()
 
-    cur.execute(
-        "SELECT COUNT(*) FROM customers"
+    cur.execute("SELECT COUNT(*) FROM customers")
+    customers = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM orders")
+    orders = cur.fetchone()[0]
+
+    cur.execute("SELECT SUM(amount) FROM orders")
+    revenue = cur.fetchone()[0]
+
+    cur.close()
+
+    return {
+        "customers": customers,
+        "orders": orders,
+        "revenue": float(revenue)
+    }
+@app.get("/ai-business-summary")
+def ai_business_summary():
+
+    cur = conn.cursor()
+
+    cur.execute("SELECT COUNT(*) FROM customers")
+    customers = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM orders")
+    orders = cur.fetchone()[0]
+
+    cur.execute("SELECT SUM(amount) FROM orders")
+    revenue = cur.fetchone()[0]
+
+    cur.close()
+
+    prompt = f"""
+    We have:
+    Customers: {customers}
+    Orders: {orders}
+    Revenue: {revenue}
+
+    Give a short business summary.
+    """
+
+    response = ollama.chat(
+        model="llama3.2",
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
     )
+
+    return {
+        "answer": response["message"]["content"]
+    }
+@app.get("/ai-business-summary")
+def ai_business_summary():
+    ...
+    return {"answer": response["message"]["content"]}
+
+
+@app.get("/ask-customers")
+def ask_customers():
+
+    cur = conn.cursor()
+
+    cur.execute("SELECT COUNT(*) FROM customers")
 
     count = cur.fetchone()[0]
 
     cur.close()
 
-    return {
-        "total_customers": count
-    }
+    prompt = f"""
+    We have {count} customers.
 
-@app.get("/orders/count")
-def orders_count():
+    Answer the question:
+    How many customers do we have?
+    """
+
+    response = ollama.chat(
+        model="llama3.2",
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    )
+
+    return {
+        "answer": response["message"]["content"]
+    }
+@app.get("/ask/{question}")
+def ask(question: str):
+
+    response = ollama.chat(
+        model="llama3.2",
+        messages=[
+            {
+                "role": "user",
+                "content": question
+            }
+        ]
+    )
+
+    return {
+        "question": question,
+        "answer": response["message"]["content"]
+    }
+@app.get("/database-question")
+def database_question():
 
     cur = conn.cursor()
 
-    cur.execute(
-        "SELECT COUNT(*) FROM orders"
+    cur.execute("SELECT COUNT(*) FROM customers")
+    customers = cur.fetchone()[0]
+
+    cur.close()
+
+    response = ollama.chat(
+        model="llama3.2",
+        messages=[
+            {
+                "role": "user",
+                "content": f"""
+Database Information:
+Customers = {customers}
+
+Question:
+How many customers do we have?
+
+Answer in one sentence.
+"""
+            }
+        ]
     )
 
-    count = cur.fetchone()[0]
+    return {
+        "answer": response["message"]["content"]
+    }
+@app.get("/ask-database/{question}")
+def ask_database(question: str):
+
+    cur = conn.cursor()
+
+    if "customer" in question.lower():
+
+        cur.execute("SELECT COUNT(*) FROM customers")
+        result = cur.fetchone()[0]
+
+        answer = f"There are {result} customers in the database."
+
+    elif "order" in question.lower():
+
+        cur.execute("SELECT COUNT(*) FROM orders")
+        result = cur.fetchone()[0]
+
+        answer = f"There are {result} orders in the database."
+
+    elif "revenue" in question.lower():
+
+        cur.execute("SELECT SUM(amount) FROM orders")
+        result = cur.fetchone()[0]
+
+        answer = f"The total revenue is {result}."
+
+    else:
+
+        answer = "Sorry, I can only answer customer, order, or revenue questions right now."
 
     cur.close()
 
     return {
-        "total_orders": count
+        "question": question,
+        "answer": answer
     }
-@app.get("/orders/revenue")
-def orders_revenue():
+@app.get("/rag/{question}")
+def rag(question: str):
 
-    cur = conn.cursor()
-
-    cur.execute(
-        "SELECT SUM(amount) FROM orders"
-    )
-
-    count = cur.fetchone()[0]
-
-    cur.close()
-
-    return {
-        "total_revenue": count
-    }
-@app.get("/orders/average")
-def orders_average():
-
-    cur = conn.cursor()
-
-    cur.execute(
-        "SELECT AVG(amount) FROM orders"
-    )
-
-    count = cur.fetchone()[0]
-
-    cur.close()
-
-    return {
-        "average_order_value": count
-    }
-@app.get("/orders/status-summary")
-def status_summary():
+    query_embedding = model.encode(question).tolist()
 
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT status, COUNT(*)
-        FROM orders
-        GROUP BY status
-    """)
+    SELECT content
+    FROM company_knowledge
+    ORDER BY embedding <=> %s::vector
+    LIMIT 1;
+    """, (query_embedding,))
 
-    rows = cur.fetchall()
-
-    result = {}
-
-    for status, count in rows:
-        result[status] = count
+    knowledge = cur.fetchone()[0]
 
     cur.close()
-    print(result)
 
-    return result
+    prompt = f"""
+    Use this company knowledge:
+
+    {knowledge}
+
+    Answer this question:
+
+    {question}
+    """
+
+    response = ollama.chat(
+        model="llama3.2",
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    )
+
+    return {
+        "knowledge_used": knowledge,
+        "answer": response["message"]["content"]
+    }
