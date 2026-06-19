@@ -1,9 +1,21 @@
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from fastapi import FastAPI
 import ollama
 import psycopg2
 from sentence_transformers import SentenceTransformer
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+class ChatRequest(BaseModel):
+    question: str
+
 
 conn = psycopg2.connect(
     host="localhost",
@@ -233,4 +245,65 @@ def rag(question: str):
     return {
         "knowledge_used": knowledge,
         "answer": response["message"]["content"]
+    }
+@app.post("/chat")
+def chat(request: ChatRequest):
+
+    question = request.question
+
+    query_embedding = model.encode(question).tolist()
+
+    cur = conn.cursor()
+
+    cur.execute("""
+    SELECT content
+    FROM company_knowledge
+    ORDER BY embedding <=> %s::vector
+    LIMIT 1;
+    """, (query_embedding,))
+
+    knowledge = cur.fetchone()[0]
+
+    cur.close()
+
+    prompt = f"""
+    Use this company knowledge:
+
+    {knowledge}
+
+    Answer this question:
+
+    {question}
+    """
+
+    response = ollama.chat(
+        model="llama3.2",
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    )
+
+    return {
+        "answer": response["message"]["content"]
+    }
+@app.get("/analytics")
+def analytics():
+
+    cur = conn.cursor()
+
+    cur.execute("SELECT COUNT(*) FROM customers")
+    customers = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM orders")
+    orders = cur.fetchone()[0]
+
+    cur.close()
+
+    return {
+        "chart_type": "BAR",
+        "labels": ["Customers", "Orders"],
+        "values": [customers, orders]
     }
