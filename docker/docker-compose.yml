@@ -1,0 +1,10 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: omnisight_postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: omnisight
+    ports:
+      - "5432:5432"

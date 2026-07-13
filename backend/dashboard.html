@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OmniSight Dashboard</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+    <h1>📊 OmniSight Analytics Dashboard</h1>
+
+    <h2 id="customers">Customers: Loading...</h2>
+    <h2 id="orders">Orders: Loading...</h2>
+
+    <canvas id="myChart"></canvas>
+
+    <script>
+
+        fetch("http://127.0.0.1:8000/analytics")
+            .then(response => response.json())
+            .then(data => {
+
+                document.getElementById("customers").innerText =
+                    "Customers: " + data.values[0];
+
+                document.getElementById("orders").innerText =
+                    "Orders: " + data.values[1];
+
+                const ctx = document.getElementById("myChart");
+
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Business Metrics',
+                            data: data.values
+                        }]
+                    }
+                });
+
+            });
+
+    </script>
+
+</body>
+</html>

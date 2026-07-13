@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ai_env/
+backend/ai_env/
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.*
+
+# Streamlit
+.streamlit/
+
+# Logs
+*.log
+
+# Reports
+reports/
+*.pdf
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backup
+backend/old_files/
+
+# Large temporary files
+status_out.txt
