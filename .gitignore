@@ -44,3 +44,5 @@ backend/old_files/
 
 # Large temporary files
 status_out.txt
+*.sqlite-shm
+*.sqlite-wal
