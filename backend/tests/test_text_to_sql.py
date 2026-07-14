@@ -20,7 +20,19 @@ order_date date
 
 question = "How many customers do we have?"
 
-sql = generate_sql(question, schema)
+result = generate_sql(question, schema)
 
-print("\nGenerated SQL:\n")
-print(sql)
+print("\n========== SQL VALIDATION ==========\n")
+
+if result["success"]:
+
+    print("SQL Validation : PASSED\n")
+    print("Generated SQL:\n")
+    print(result["sql"])
+
+else:
+
+    print("SQL Validation : FAILED\n")
+    print("Reason:")
+    print(result["error"])
+    print("\nExecution stopped for security reasons.")

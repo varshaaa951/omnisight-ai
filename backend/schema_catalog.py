@@ -1,7 +1,7 @@
-def extract_schema():
+def extract_schema(database_name="omnisight"):
     from database import get_connection, return_connection
 
-    conn = get_connection()
+    conn = get_connection(database_name)
     cur = conn.cursor()
 
     try:
@@ -78,4 +78,4 @@ def extract_schema():
 
     finally:
         cur.close()
-        return_connection(conn)
+        return_connection(conn, database_name)

@@ -6,44 +6,55 @@ from schema_catalog import extract_schema
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
-conn = get_connection()
+# Central vector catalog is stored in omnisight
+conn = get_connection("omnisight")
 register_vector(conn)
 
 cur = conn.cursor()
 
-schema = extract_schema()
+databases = [
+    ("omnisight", "omnisight"),
+    ("marketing_db", "marketing_db")
+]
 
-for table in schema:
+for db_name, source in databases:
 
-    Table: orders.
+    schema = extract_schema(db_name)
 
-order_id
-Type: integer.
-Primary Key.
+    for table in schema:
 
-customer_id
-Type: integer.
-Foreign Key → customers.customer_id.
+        table_info = schema[table]
 
-amount
-Type: numeric.
+        text = f"Table {table}. "
+        text += table_info["description"] + " "
 
-status
-Type: text.
+        for col in table_info["columns"]:
 
-    embedding = model.encode(text).tolist()
+            text += f"{col['column']} is {col['type']}. "
 
-    cur.execute(
-        """
-        INSERT INTO ai_schema_embeddings(content, embedding)
-        VALUES (%s,%s)
-        """,
-        (text, embedding)
-    )
+            if col["primary_key"]:
+                text += "Primary Key. "
+
+            if col["references"]:
+                text += (
+                    f"Foreign Key references "
+                    f"{col['references']['table']}.{col['references']['column']}. "
+                )
+
+        embedding = model.encode(text).tolist()
+
+        cur.execute(
+            """
+            INSERT INTO ai_schema_embeddings
+            (content, embedding, source)
+            VALUES (%s, %s, %s)
+            """,
+            (text, embedding, source)
+        )
 
 conn.commit()
 
 cur.close()
-return_connection(conn)
+return_connection(conn, "omnisight")
 
-print("✅ Schema embeddings stored successfully.")
+print("✅ All schema embeddings stored successfully.")

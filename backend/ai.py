@@ -1,6 +1,7 @@
 import ollama
 from sentence_transformers import SentenceTransformer
-
+from cross_engine_mapping import CROSS_ENGINE_MAPPING
+from sql_guard import validate_sql
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 # ---------- General LLM ----------
@@ -42,13 +43,21 @@ Your responsibilities:
 def generate_sql(question, schema_context):
 
     prompt = f"""
+You are an expert database analyst.
+
+Cross Database Mapping:
+
+{CROSS_ENGINE_MAPPING}
+
 Database Schema:
 
 {schema_context}
 
-User Question:
+Question:
 
 {question}
+
+Return ONLY SQL.
 """
 
     response = ollama.chat(
@@ -65,4 +74,18 @@ User Question:
         ]
     )
 
-    return response["message"]["content"].strip()
+    sql = response["message"]["content"].strip()
+
+    is_valid, message = validate_sql(sql)
+
+    if not is_valid:
+        return {
+            "success": False,
+            "error": message,
+            "sql": None
+        }
+
+    return {
+        "success": True,
+        "sql": sql
+    }

@@ -9,16 +9,19 @@ def rag_answer(question):
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute("""
-        SELECT content
-        FROM company_knowledge
-        ORDER BY embedding <=> %s::vector
-        LIMIT 1;
-    """, (query_embedding,))
+    try:
+        cur.execute("""
+            SELECT content
+            FROM company_knowledge
+            ORDER BY embedding <=> %s::vector
+            LIMIT 1;
+        """, (query_embedding,))
 
-    result = cur.fetchone()
+        result = cur.fetchone()
 
-    return_connection(conn)
+    finally:
+        cur.close()
+        return_connection(conn)
 
     if result is None:
         return "No company knowledge found."
