@@ -18,15 +18,19 @@ cur = conn.cursor()
 
 cur.execute("""
 SELECT content
-FROM company_knowledge
+FROM ai_schema_embeddings
 ORDER BY embedding <=> %s::vector
-LIMIT 1;
+LIMIT 3;
 """, (query_embedding,))
 
-result = cur.fetchone()
+results = cur.fetchall()
 
-print("Most Relevant Knowledge:")
-print(result[0])
+context = "Relevant Database Schema\n\n"
+
+for row in results:
+    context += row[0] + "\n\n"
+
+print(context)
 
 cur.close()
 conn.close()

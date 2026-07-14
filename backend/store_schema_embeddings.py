@@ -15,11 +15,21 @@ schema = extract_schema()
 
 for table in schema:
 
-    text = f"Table {table}. "
+    Table: orders.
 
-    for col in schema[table]:
+order_id
+Type: integer.
+Primary Key.
 
-        text += f"{col['column']} is {col['type']}. "
+customer_id
+Type: integer.
+Foreign Key → customers.customer_id.
+
+amount
+Type: numeric.
+
+status
+Type: text.
 
     embedding = model.encode(text).tolist()
 

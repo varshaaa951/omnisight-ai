@@ -69,7 +69,10 @@ def extract_schema():
                 if column["column"] in foreign_keys:
                     column["references"] = foreign_keys[column["column"]]
 
-            schema[table] = columns
+            schema[table] = {
+    "description": f"Contains data related to {table}.",
+    "columns": columns
+}
 
         return schema
 
